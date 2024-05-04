@@ -1,0 +1,6 @@
+rootProject.name = 'ppe'
+
+include 'app'
+include 'agent'
+include 'certs'
+

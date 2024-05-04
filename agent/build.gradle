@@ -1,0 +1,51 @@
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'de.fiereu'
+
+repositories {
+    mavenCentral()
+}
+
+shadowJar {
+    archiveBaseName.set('agent')
+    archiveClassifier.set('')
+    archiveVersion.set('')
+
+    manifest {
+        attributes(
+            'Premain-Class': 'de.fiereu.ppe.agent.Agent'
+        )
+    }
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+
+    implementation project(':certs')
+
+    // ASM
+    implementation 'org.ow2.asm:asm:9.7'
+    implementation 'org.ow2.asm:asm-commons:9.7'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    manifest {
+        attributes(
+            'Premain-Class': 'de.fiereu.ppe.agent.Agent'
+        )
+    }
+}
+
+shadowJar {
+    archiveBaseName.set('agent')
+    archiveClassifier.set('')
+    archiveVersion.set('')
+}

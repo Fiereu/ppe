@@ -1,0 +1,58 @@
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'de.fiereu'
+version = '1.0'
+
+shadowJar {
+    archiveBaseName.set('app')
+    archiveClassifier.set('')
+    archiveVersion.set('')
+
+    manifest {
+        attributes(
+                'Main-Class': 'de.fiereu.ppe.Application'
+        )
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+
+    implementation project(':certs')
+
+    // logback + slf4j
+    implementation 'org.slf4j:slf4j-api:1.7.32'
+    implementation 'ch.qos.logback:logback-classic:1.4.14'
+
+    // FlatDev
+    implementation 'com.formdev:flatlaf:3.4.1'
+    implementation 'com.formdev:flatlaf-intellij-themes:3.4.1'
+
+    // MigLayout
+    implementation 'com.miglayout:miglayout-swing:11.3'
+
+    // BouncyCastle
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+
+    implementation 'com.github.maltalex:ineter:0.3.0'
+
+    implementation 'org.xerial:sqlite-jdbc:3.45.3.0'
+
+    implementation 'commons-beanutils:commons-beanutils:1.9.4'
+    implementation 'org.apache.commons:commons-configuration2:2.10.1'
+
+    implementation 'org.exbin.bined:bined-swing:0.2.1'
+    implementation 'org.exbin.auxiliary:binary_data:0.2.1'
+}
+
+test {
+    useJUnitPlatform()
+}
