@@ -2,3 +2,6 @@ build/
 .gradle/
 .idea/
 app/lib/
+.vscode/
+config.conf
+packets.db
