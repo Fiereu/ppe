@@ -1,158 +1,154 @@
-/*
- * Created by JFormDesigner on Fri Apr 26 21:45:33 CEST 2024
- */
-
 package de.fiereu.ppe.forms;
 
 import de.fiereu.ppe.ErrorHandler;
 import de.fiereu.ppe.PacketHistory;
 import de.fiereu.ppe.proxy.ServerType;
 import de.fiereu.ppe.util.Finder;
-import java.awt.BorderLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.io.File;
-import javax.swing.JFrame;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
-import javax.swing.JTabbedPane;
-import javax.swing.WindowConstants;
+
 import org.apache.commons.configuration2.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.swing.*;
+
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.File;
+import java.io.IOException;
+
 public class MainForm extends JFrame {
 
-  private static final Logger log = LoggerFactory.getLogger(MainForm.class);
-  private final Configuration config;
-  private final PacketHistory packetHistory;
-  private JMenuBar menuBar1;
-  private JMenuItem menuItem1;
-  private JMenuItem menuItem2;
-  private JMenu menu1;
-  private JMenu menu2;
-  private JTabbedPane serverTabs;
-  private ServerControlPane serverController;
+    private static final Logger log = LoggerFactory.getLogger(MainForm.class);
+    private final Configuration config;
+    private final PacketHistory packetHistory;
+    private final ServerControlPane serverController;
+    private JMenuBar menuBar;
+    private JTabbedPane serverTabs;
 
-  public MainForm(Configuration config, PacketHistory packetHistory) {
-    this.config = config;
-    this.packetHistory = packetHistory;
-    setUncaughtExceptionHandler();
-    initComponents();
-  }
+    public MainForm(Configuration config, PacketHistory packetHistory) {
+        this.config = config;
+        this.packetHistory = packetHistory;
+        this.serverController = new ServerControlPane(packetHistory);
 
-  private void setUncaughtExceptionHandler() {
-    Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
-      ErrorHandler.handle(this, "Uncaught exception in thread %s".formatted(t.getName()), e);
-      log.error("Uncaught exception in thread %s".formatted(t.getName()), e);
-    });
-  }
-
-  private void thisWindowClosing(WindowEvent e) {
-    serverController.close();
-    packetHistory.close();
-  }
-
-  private void createUIComponents() {
-  }
-
-  private void runPokeMMO(ActionEvent e) {
-    String path = config.getString("pokeMMO.path");
-    if (path == null) {
-      path = Finder.findPokeMMO(this);
-      if (path != null) {
-        config.setProperty("pokeMMO.path", path);
-      }
+        setUncaughtExceptionHandler();
+        initComponents();
     }
-      if (path == null) {
-          return;
-      }
-    File pokeMMO = new File(path);
-    if (!pokeMMO.exists()) {
-      JOptionPane.showMessageDialog(this, "PokeMMO not found", "Error", JOptionPane.ERROR_MESSAGE);
-      return;
+
+    private void setUncaughtExceptionHandler() {
+        Thread.setDefaultUncaughtExceptionHandler((thread, exception) -> {
+            ErrorHandler.handle(this, "Uncaught exception in thread " + thread.getName(), exception);
+            log.error("Uncaught exception in thread {}", thread.getName(), exception);
+        });
     }
-    path = config.getString("pokeMMO.agent");
-    if (path == null) {
-      path = Finder.findAgent(this);
-      if (path != null) {
-        config.setProperty("pokeMMO.agent", path);
-      }
+
+    private void initComponents() {
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                serverController.close();
+                packetHistory.close();
+            }
+        });
+
+        // Layout
+        var contentPane = getContentPane();
+        contentPane.setLayout(new BorderLayout());
+
+        // Tabs
+        serverTabs = new JTabbedPane();
+        serverTabs.addTab(ServerType.LOGIN.name(), new ServerTab(ServerType.LOGIN, serverController, packetHistory));
+        serverTabs.addTab(ServerType.GAME.name(), new ServerTab(ServerType.GAME, serverController, packetHistory));
+        serverTabs.addTab(ServerType.CHAT.name(), new ServerTab(ServerType.CHAT, serverController, packetHistory));
+        contentPane.add(serverTabs, BorderLayout.CENTER);
+        contentPane.add(serverController, BorderLayout.WEST);
+
+        // Menu
+        menuBar = new JMenuBar();
+        createGameMenu();
+        createToolsMenu();
+        setJMenuBar(menuBar);
+
+        // Window settings
+        setSize(800, 450);
+        setLocationRelativeTo(null);
     }
-      if (path == null) {
-          return;
-      }
-    File agent = new File(path);
-    if (!agent.exists()) {
-      JOptionPane.showMessageDialog(this, "Agent not found", "Error", JOptionPane.ERROR_MESSAGE);
-      return;
+
+    private void createGameMenu() {
+        JMenu gameMenu = new JMenu("Game");
+
+        JMenuItem startItem = new JMenuItem("Start");
+        startItem.addActionListener(this::runPokeMMO);
+        gameMenu.add(startItem);
+
+        menuBar.add(gameMenu);
     }
-    try {
-      new ProcessBuilder("java", "-javaagent:\"" + agent.getAbsolutePath() + "\"", "-jar",
-          pokeMMO.getAbsolutePath())
-          .directory(pokeMMO.getParentFile())
-          .start();
-    } catch (Exception ex) {
-      config.clearProperty("pokeMMO.path");
-      config.clearProperty("pokeMMO.agent");
-      JOptionPane.showMessageDialog(this, "Failed to start PokeMMO", "Error",
-          JOptionPane.ERROR_MESSAGE);
+
+    private void createToolsMenu() {
+        JMenu toolsMenu = new JMenu("Tools");
+
+        JMenuItem repeatItem = new JMenuItem("Repeat");
+        repeatItem.addActionListener(this::openRepeaterForm);
+        toolsMenu.add(repeatItem);
+
+        JMenuItem chainItem = new JMenuItem("Packet Chainer");
+        chainItem.addActionListener(e -> new PacketChainerForm(serverController).setVisible(true));
+        toolsMenu.add(chainItem);
+
+        menuBar.add(toolsMenu);
     }
-  }
 
-  private void openRepeaterBtn(ActionEvent e) {
-    new RepeaterForm(
-        ((ServerTab) serverTabs.getSelectedComponent()).serverType,
-        serverController
-    ).setVisible(true);
-  }
+    private void runPokeMMO(ActionEvent e) {
+        try {
+            String pokeMMOPath = getFilePath("pokeMMO.path", Finder::findPokeMMO, "PokeMMO not found");
+            if (pokeMMOPath == null)
+                return;
 
-  private void initComponents() {
-    menuBar1 = new JMenuBar();
-    menu1 = new JMenu();
-    menuItem1 = new JMenuItem();
-    menu2 = new JMenu();
-    menuItem2 = new JMenuItem();
-    serverController = new ServerControlPane(packetHistory);
-    serverTabs = new JTabbedPane();
-    serverTabs.addTab(ServerType.LOGIN.name(),
-        new ServerTab(ServerType.LOGIN, serverController, packetHistory));
-    serverTabs.addTab(ServerType.GAME.name(),
-        new ServerTab(ServerType.GAME, serverController, packetHistory));
-    serverTabs.addTab(ServerType.CHAT.name(),
-        new ServerTab(ServerType.CHAT, serverController, packetHistory));
+            String agentPath = getFilePath("pokeMMO.agent", Finder::findAgent, "Agent not found");
+            if (agentPath == null)
+                return;
 
-    setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-    addWindowListener(new WindowAdapter() {
-      @Override
-      public void windowClosing(WindowEvent e) {
-        thisWindowClosing(e);
-      }
-    });
-    var contentPane = getContentPane();
-    contentPane.setLayout(new BorderLayout());
+            new ProcessBuilder("java", "-javaagent:\"" + agentPath + "\"", "-jar", pokeMMOPath)
+                    .directory(new File(pokeMMOPath).getParentFile())
+                    .start();
+        } catch (IOException ex) {
+            log.error("Failed to start PokeMMO", ex);
+            config.clearProperty("pokeMMO.path");
+            config.clearProperty("pokeMMO.agent");
+            showErrorDialog("Failed to start PokeMMO");
+        }
+    }
 
-    menu1.setText("Game");
+    private void openRepeaterForm(ActionEvent e) {
+        ServerTab selectedTab = (ServerTab) serverTabs.getSelectedComponent();
+        if (selectedTab != null) {
+            new RepeaterForm(selectedTab.serverType, serverController).setVisible(true);
+        }
+    }
 
-    menuItem1.setText("Start");
-    menuItem1.addActionListener(this::runPokeMMO);
-    menu1.add(menuItem1);
+    private String getFilePath(String configKey, FileFinder finder, String errorMessage) {
+        String path = config.getString(configKey);
+        if (path == null) {
+            path = finder.find(this);
+            if (path != null) {
+                config.setProperty(configKey, path);
+            }
+        }
+        if (path == null || !new File(path).exists()) {
+            showErrorDialog(errorMessage);
+            return null;
+        }
+        return path;
+    }
 
-    menuItem2.setText("Repeat");
-    menuItem2.addActionListener(this::openRepeaterBtn);
-    menu2.add(menuItem2);
+    private void showErrorDialog(String message) {
+        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
 
-    menu2.setText("Tools");
-    menuBar1.add(menu1);
-    menuBar1.add(menu2);
-
-    setJMenuBar(menuBar1);
-    contentPane.add(serverTabs, BorderLayout.CENTER);
-    contentPane.add(serverController, BorderLayout.WEST);
-    setSize(800, 450);
-    setLocationRelativeTo(null);
-  }
+    @FunctionalInterface
+    private interface FileFinder {
+        String find(MainForm mainForm);
+    }
 }

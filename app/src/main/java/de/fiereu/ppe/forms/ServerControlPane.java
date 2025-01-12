@@ -4,12 +4,6 @@
 
 package de.fiereu.ppe.forms;
 
-import de.fiereu.ppe.ErrorHandler;
-import de.fiereu.ppe.PacketHistory;
-import de.fiereu.ppe.proxy.ProxyClient;
-import de.fiereu.ppe.proxy.ProxyServer;
-import de.fiereu.ppe.proxy.ServerType;
-import com.github.maltalex.ineter.base.IPAddress;
 import java.awt.event.ActionEvent;
 import java.io.Closeable;
 import java.net.InetAddress;
@@ -17,12 +11,21 @@ import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+
+import com.github.maltalex.ineter.base.IPAddress;
+
+import de.fiereu.ppe.ErrorHandler;
+import de.fiereu.ppe.PacketHistory;
+import de.fiereu.ppe.proxy.ProxyClient;
+import de.fiereu.ppe.proxy.ProxyServer;
+import de.fiereu.ppe.proxy.ServerType;
 import net.miginfocom.swing.MigLayout;
 
 public class ServerControlPane extends JPanel implements Closeable {
