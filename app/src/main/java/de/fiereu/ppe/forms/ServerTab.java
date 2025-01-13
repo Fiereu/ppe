@@ -38,6 +38,23 @@ public class ServerTab extends JPanel {
     private void initComponents() {
         setLayout(new BorderLayout());
 
+        JPanel filterPanel = new JPanel();
+        filterPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+
+        JButton filterServerToClientButton = new JButton("Server to Client");
+        JButton filterClientToServerButton = new JButton("Client to Server");
+        JButton clearFilterButton = new JButton("Clear Filter");
+
+        filterServerToClientButton.addActionListener(e -> filterTableByDirection("SERVER_TO_CLIENT"));
+        filterClientToServerButton.addActionListener(e -> filterTableByDirection("CLIENT_TO_SERVER"));
+        clearFilterButton.addActionListener(e -> clearFilter());
+
+        filterPanel.add(filterServerToClientButton);
+        filterPanel.add(filterClientToServerButton);
+        filterPanel.add(clearFilterButton);
+
+        add(filterPanel, BorderLayout.NORTH);
+
         scrollPane = new JScrollPane();
         packetTable = new JTable();
         tablePopupMenu = new JPopupMenu();
@@ -70,6 +87,16 @@ public class ServerTab extends JPanel {
         tablePopupMenu.add(menuItemDeleteAll);
 
         add(scrollPane, BorderLayout.CENTER);
+    }
+
+    private void filterTableByDirection(String direction) {
+        PacketTableModel model = (PacketTableModel) packetTable.getModel();
+        model.setFilterDirection(direction);
+    }
+
+    private void clearFilter() {
+        PacketTableModel model = (PacketTableModel) packetTable.getModel();
+        model.clearFilter();
     }
 
     private void deleteSelectedBtn(ActionEvent e) {
@@ -123,7 +150,7 @@ public class ServerTab extends JPanel {
         for (PacketHistory.PacketEntry packet : selectedPackets) {
             byte[] data = packet.data(); // Retrieve packet data
             activeChainerForm.addPacketToTable(String.valueOf(packet.uid()), 0, data); // Add to the chainer form with 0
-                                                                                       // delay by default
+            // delay by default
         }
 
         // Bring the active form to the front if it's already open
@@ -133,8 +160,10 @@ public class ServerTab extends JPanel {
     private class PacketTableModel extends AbstractTableModel {
 
         private static final Logger log = LoggerFactory.getLogger(PacketTableModel.class);
-        private static final String[] COLUMN_NAMES = { "Time", "Direction", "Id", "Data" };
+        private static final String[] COLUMN_NAMES = {"Time", "Direction", "Id", "Data"};
         private final List<PacketHistory.PacketEntry> cache = new ArrayList<>();
+        private final List<PacketHistory.PacketEntry> filteredCache = new ArrayList<>();
+        private String filterDirection = null;
         private final Timer updateTimer = new Timer();
 
         protected PacketTableModel() {
@@ -144,6 +173,32 @@ public class ServerTab extends JPanel {
                     update();
                 }
             }, 0, 500);
+        }
+
+        public void setFilterDirection(String direction) {
+            this.filterDirection = direction;
+            applyFilter();
+        }
+
+        public void clearFilter() {
+            this.filterDirection = null;
+            applyFilter();
+        }
+
+        private void applyFilter() {
+            synchronized (cache) {
+                filteredCache.clear();
+                if (filterDirection == null) {
+                    filteredCache.addAll(cache);
+                } else {
+                    for (PacketHistory.PacketEntry entry : cache) {
+                        if (entry.direction().name().equals(filterDirection)) {
+                            filteredCache.add(entry);
+                        }
+                    }
+                }
+            }
+            fireTableDataChanged();
         }
 
         private void update() {
@@ -160,23 +215,22 @@ public class ServerTab extends JPanel {
                     log.error("Failed to update packet table", e);
                 }
             }
-
-            fireTableDataChanged();
+            applyFilter();
             restoreSelection(selectedUids);
         }
 
         private Long getRowUid(int rowIndex) {
-            if (rowIndex < 0 || rowIndex >= cache.size()) {
+            if (rowIndex < 0 || rowIndex >= filteredCache.size()) {
                 return null;
             }
-            return cache.get(cache.size() - rowIndex - 1).uid();
+            return filteredCache.get(filteredCache.size() - rowIndex - 1).uid();
         }
 
         private void restoreSelection(List<Long> selectedUids) {
-            for (int i = 0; i < cache.size(); i++) {
-                if (selectedUids.contains(cache.get(i).uid())) {
+            for (int i = 0; i < filteredCache.size(); i++) {
+                if (selectedUids.contains(filteredCache.get(i).uid())) {
                     packetTable.getSelectionModel()
-                            .addSelectionInterval(cache.size() - i - 1, cache.size() - i - 1);
+                            .addSelectionInterval(filteredCache.size() - i - 1, filteredCache.size() - i - 1);
                 }
             }
         }
@@ -188,7 +242,7 @@ public class ServerTab extends JPanel {
 
         @Override
         public int getRowCount() {
-            return cache.size();
+            return filteredCache.size();
         }
 
         @Override
@@ -198,12 +252,12 @@ public class ServerTab extends JPanel {
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-            if (rowIndex < 0 || rowIndex >= cache.size()) {
+            if (rowIndex < 0 || rowIndex >= filteredCache.size()) {
                 return null;
             }
-            rowIndex = cache.size() - rowIndex - 1;
-            synchronized (cache) {
-                PacketHistory.PacketEntry entry = cache.get(rowIndex);
+            rowIndex = filteredCache.size() - rowIndex - 1;
+            synchronized (filteredCache) {
+                PacketHistory.PacketEntry entry = filteredCache.get(rowIndex);
                 return switch (columnIndex) {
                     case 0 ->
                         Time.format(entry.timestamp());
@@ -220,13 +274,10 @@ public class ServerTab extends JPanel {
         }
 
         public PacketHistory.PacketEntry getRow(int rowIndex) {
-            if (rowIndex < 0 || rowIndex >= cache.size()) {
+            if (rowIndex < 0 || rowIndex >= filteredCache.size()) {
                 return null;
             }
-            rowIndex = cache.size() - rowIndex - 1;
-            synchronized (cache) {
-                return cache.get(rowIndex);
-            }
+            return filteredCache.get(filteredCache.size() - rowIndex - 1);
         }
 
         public List<PacketHistory.PacketEntry> getSelectedRows() {
