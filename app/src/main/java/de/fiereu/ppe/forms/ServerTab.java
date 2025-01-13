@@ -149,8 +149,8 @@ public class ServerTab extends JPanel {
         // Add the selected packets to the active form
         for (PacketHistory.PacketEntry packet : selectedPackets) {
             byte[] data = packet.data(); // Retrieve packet data
-            activeChainerForm.addPacketToTable(String.valueOf(packet.uid()), 0, data); // Add to the chainer form with 0
-            // delay by default
+            int packetID = packet.id();
+            activeChainerForm.addPacketToTable(String.valueOf(packet.uid()), packetID, 0, data); // Add to the chainer form with 0 delay by default
         }
 
         // Bring the active form to the front if it's already open

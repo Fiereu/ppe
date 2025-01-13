@@ -64,24 +64,33 @@ public class PacketChainerForm extends JFrame {
         setTitle("Packet Chainer");
         setLayout(new MigLayout("fill, wrap 2", "[grow, fill] [grow, fill]", "[grow, fill] [] []"));
 
-        tableModel = new DefaultTableModel(new Object[] { "Label", "Delay (ms)", "Data" }, 0) {
+        tableModel = new DefaultTableModel(new Object[]{"Label", "ID", "Delay (ms)", "Data"}, 0) {
             @Override
             public Class<?> getColumnClass(int columnIndex) {
-                if (columnIndex == 1)
-                    return Integer.class; // Delay column
-                if (columnIndex == 2)
-                    return byte[].class; // Data column
+                if (columnIndex == 1) // ID column
+                {
+                    return Integer.class;
+                }
+                if (columnIndex == 2) // Delay column
+                {
+                    return Integer.class;
+                }
+                if (columnIndex == 3) // Data column
+                {
+                    return byte[].class;
+                }
                 return String.class; // Label column
             }
 
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column != 2; // Make sure Data Col is not editable
+                return column != 3; // Make sure Data Col is not editable
             }
 
             public void moveRow(int from, int to) {
-                if (from < 0 || from >= getRowCount() || to < 0 || to >= getRowCount())
+                if (from < 0 || from >= getRowCount() || to < 0 || to >= getRowCount()) {
                     return;
+                }
 
                 Object[] movedRow = new Object[getColumnCount()];
                 for (int i = 0; i < getColumnCount(); i++) {
@@ -184,17 +193,18 @@ public class PacketChainerForm extends JFrame {
                 return;
             }
 
-            tableModel.addRow(new Object[] {
-                    packet.label,
-                    packet.delay,
-                    packetData
+            tableModel.addRow(new Object[]{
+                packet.label,
+                packet.id,
+                packet.delay,
+                packetData
             });
         });
         editor.setVisible(true);
     }
 
-    public void addPacketToTable(String label, int delay, byte[] data) {
-        tableModel.addRow(new Object[] { label, delay, data });
+    public void addPacketToTable(String label, int id, int delay, byte[] data) {
+        tableModel.addRow(new Object[]{label, id, delay, data});
     }
 
     private void removeSelectedPacket(ActionEvent e) {
@@ -210,9 +220,10 @@ public class PacketChainerForm extends JFrame {
         List<PacketData> packets = new ArrayList<>();
         for (int i = 0; i < tableModel.getRowCount(); i++) {
             String label = (String) tableModel.getValueAt(i, 0);
-            int delay = (Integer) tableModel.getValueAt(i, 1);
-            byte[] data = (byte[]) tableModel.getValueAt(i, 2);
-            packets.add(new PacketData(label, delay, new ByteArrayEditableData(data)));
+            int packetID = (Integer) tableModel.getValueAt(i, 1);
+            int delay = (Integer) tableModel.getValueAt(i, 2);
+            byte[] data = (byte[]) tableModel.getValueAt(i, 3);
+            packets.add(new PacketData(label, packetID, delay, new ByteArrayEditableData(data)));
         }
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -236,7 +247,7 @@ public class PacketChainerForm extends JFrame {
                     packet.data.saveToStream(outputStream);
                     data = outputStream.toByteArray();
                 }
-                tableModel.addRow(new Object[] { packet.label, packet.delay, data });
+                tableModel.addRow(new Object[]{packet.label, packet.delay, data});
             }
             JOptionPane.showMessageDialog(this, "Packets loaded from packets.json.", "Success",
                     JOptionPane.INFORMATION_MESSAGE);
@@ -250,10 +261,11 @@ public class PacketChainerForm extends JFrame {
             try {
                 for (int i = 0; i < tableModel.getRowCount(); i++) {
                     String label = (String) tableModel.getValueAt(i, 0);
-                    int delay = (Integer) tableModel.getValueAt(i, 1);
-                    byte[] data = (byte[]) tableModel.getValueAt(i, 2);
+                    int packetID = (Integer) tableModel.getValueAt(i, 1);
+                    int delay = (Integer) tableModel.getValueAt(i, 2);
+                    byte[] data = (byte[]) tableModel.getValueAt(i, 3);
 
-                    sendPacket(label, data);
+                    sendPacket(label, packetID, data);
 
                     if (delay > 0) {
                         Thread.sleep(delay);
@@ -263,14 +275,14 @@ public class PacketChainerForm extends JFrame {
                 // Notify when chain has executed
                 SwingUtilities
                         .invokeLater(() -> JOptionPane.showMessageDialog(this, "Packet chain executed successfully.",
-                                "Success", JOptionPane.INFORMATION_MESSAGE));
+                        "Success", JOptionPane.INFORMATION_MESSAGE));
             } catch (Exception ex) {
                 ErrorHandler.handle(this, "Error executing packet chain.", ex);
             }
         }).start();
     }
 
-    private void sendPacket(String label, byte[] data) {
+    private void sendPacket(String label, int packetID, byte[] data) {
         // TODO: Allow chaining LOGIN & CHAT commands
         ServerType serverType = ServerType.GAME;
         Set<ProxyClient> clients = serverController.getClients(serverType);
@@ -280,7 +292,6 @@ public class PacketChainerForm extends JFrame {
             return;
         }
 
-        int packetID = 0;
         Direction packetDirection = Direction.CLIENT_TO_SERVER;
         clients.forEach(proxyClient -> {
             try {
@@ -293,7 +304,9 @@ public class PacketChainerForm extends JFrame {
     }
 
     private static class PacketEditorForm extends JDialog {
+
         private final JTextField labelField;
+        private final JSpinner idSpinner;
         private final JSpinner delaySpinner;
         private final CodeArea dataEditor;
         private final JButton saveButton;
@@ -305,6 +318,10 @@ public class PacketChainerForm extends JFrame {
             add(new JLabel("Label:"));
             labelField = new JTextField();
             add(labelField);
+
+            add(new JLabel("Packet ID:"));
+            idSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 255, 1));
+            add(idSpinner);
 
             add(new JLabel("Delay (ms):"));
             delaySpinner = new JSpinner(new SpinnerNumberModel(0, 0, Integer.MAX_VALUE, 100));
@@ -318,6 +335,7 @@ public class PacketChainerForm extends JFrame {
             saveButton = new JButton("Save");
             saveButton.addActionListener(e -> {
                 String label = labelField.getText();
+                int id = (int) idSpinner.getValue();
                 int delay = (int) delaySpinner.getValue();
 
                 ByteArrayEditableData data = new ByteArrayEditableData();
@@ -329,7 +347,7 @@ public class PacketChainerForm extends JFrame {
                     return;
                 }
 
-                callback.onSave(new PacketData(label, delay, data));
+                callback.onSave(new PacketData(label, id, delay, data));
                 dispose();
             });
             add(saveButton, "span 2, align center");
@@ -341,22 +359,27 @@ public class PacketChainerForm extends JFrame {
 
     @FunctionalInterface
     private interface PacketCallback {
+
         void onSave(PacketData packet);
     }
 
     private static class PacketData {
+
         final String label;
+        final int id;
         final int delay;
         final ByteArrayEditableData data;
 
-        public PacketData(String label, int delay, ByteArrayEditableData data) {
+        public PacketData(String label, int id, int delay, ByteArrayEditableData data) {
             this.label = label;
+            this.id = id;
             this.delay = delay;
             this.data = data;
         }
     }
 
     private static class HexDataRenderer extends DefaultTableCellRenderer {
+
         @Override
         protected void setValue(Object value) {
             if (value instanceof byte[] data) {
