@@ -72,7 +72,7 @@ public class ServerTab extends JPanel {
         menuItemRepeater.addActionListener(this::sendToRepeaterBtn);
         menuItemSendTo.add(menuItemRepeater);
 
-        JMenuItem menuItemSendToChainer = new JMenuItem("Send to Packet Chainer");
+        JMenuItem menuItemSendToChainer = new JMenuItem("Packet Chainer");
         menuItemSendToChainer.addActionListener(this::sendToChainerBtn);
         menuItemSendTo.add(menuItemSendToChainer);
 
@@ -146,11 +146,23 @@ public class ServerTab extends JPanel {
             activeChainerForm.setVisible(true);
         }
 
-        // Add the selected packets to the active form
-        for (PacketHistory.PacketEntry packet : selectedPackets) {
+        // Add the selected packets to the active form with calculated delays
+        for (int i = selectedPackets.size() - 1; i >= 0; i--) {
+            PacketHistory.PacketEntry packet = selectedPackets.get(i);
             byte[] data = packet.data(); // Retrieve packet data
             int packetID = packet.id();
-            activeChainerForm.addPacketToTable(String.valueOf(packet.uid()), packetID, 0, data); // Add to the chainer form with 0 delay by default
+            int delay = 0;
+
+            // Calculate delay based on timestamp difference with the previous row
+            if (i > 0) {
+                long currentTimestamp = selectedPackets.get(i).timestamp();
+                long previousTimestamp = selectedPackets.get(i - 1).timestamp();
+                delay = (int) (previousTimestamp - currentTimestamp);
+            }
+
+            System.out.printf("Packet UID: %d, Delay: %d ms%n", packet.uid(), delay);
+
+            activeChainerForm.addPacketToTable(String.valueOf(packet.uid()), packetID, delay, data);
         }
 
         // Bring the active form to the front if it's already open

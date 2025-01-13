@@ -21,10 +21,12 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.JToggleButton;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
@@ -55,8 +57,11 @@ public class PacketChainerForm extends JFrame {
     private final JButton loadButton;
 
     private final JButton executeButton;
+    private final JToggleButton loopButton; // New toggle button for looping
 
     private final ServerControlPane serverController;
+
+    private volatile boolean isLooping = false; // Flag to control the loop
 
     public PacketChainerForm(ServerControlPane serverController) {
         this.serverController = serverController;
@@ -132,8 +137,21 @@ public class PacketChainerForm extends JFrame {
         executeButton.addActionListener(this::executeChain);
         add(executeButton, "span 2, growx");
 
+        loopButton = new JToggleButton("Loop");
+        loopButton.addActionListener(e -> toggleLoop());
+        add(loopButton, "span 2, growx");
+
         setSize(800, 600);
         setLocationRelativeTo(null);
+    }
+
+    private void toggleLoop() {
+        isLooping = loopButton.isSelected();
+        if (isLooping) {
+            loopButton.setText("Stop Loop");
+        } else {
+            loopButton.setText("Loop");
+        }
     }
 
     private void enableDragAndDrop() {
@@ -212,6 +230,7 @@ public class PacketChainerForm extends JFrame {
         if (selectedRow != -1) {
             tableModel.removeRow(selectedRow);
         } else {
+            loopButton.setText("Loop");
             JOptionPane.showMessageDialog(this, "No packet selected to remove.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -257,26 +276,36 @@ public class PacketChainerForm extends JFrame {
     }
 
     private void executeChain(ActionEvent e) {
+        if (tableModel.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "No packets to execute.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         new Thread(() -> {
             try {
-                for (int i = 0; i < tableModel.getRowCount(); i++) {
-                    String label = (String) tableModel.getValueAt(i, 0);
-                    int packetID = (Integer) tableModel.getValueAt(i, 1);
-                    int delay = (Integer) tableModel.getValueAt(i, 2);
-                    byte[] data = (byte[]) tableModel.getValueAt(i, 3);
+                do {
+                    for (int i = 0; i < tableModel.getRowCount(); i++) {
+                        String label = (String) tableModel.getValueAt(i, 0);
+                        int packetID = (Integer) tableModel.getValueAt(i, 1);
+                        int delay = (Integer) tableModel.getValueAt(i, 2);
+                        byte[] data = (byte[]) tableModel.getValueAt(i, 3);
 
-                    sendPacket(label, packetID, data);
+                        sendPacket(label, packetID, data);
 
-                    if (delay > 0) {
-                        Thread.sleep(delay);
+                        if (delay > 0) {
+                            Thread.sleep(delay);
+                        }
                     }
-                }
+                } while (isLooping); // Continue the loop if looping is enabled
 
-                // Notify when chain has executed
-                SwingUtilities
-                        .invokeLater(() -> JOptionPane.showMessageDialog(this, "Packet chain executed successfully.",
-                        "Success", JOptionPane.INFORMATION_MESSAGE));
-            } catch (Exception ex) {
+                // Notify only once when the loop stops
+                SwingUtilities.invokeLater(() -> {
+                    if (!isLooping) {
+                        JOptionPane.showMessageDialog(this, "Packet chain executed successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);
+                    }
+                });
+
+            } catch (InterruptedException ex) {
                 ErrorHandler.handle(this, "Error executing packet chain.", ex);
             }
         }).start();
@@ -312,8 +341,12 @@ public class PacketChainerForm extends JFrame {
         private final JButton saveButton;
 
         public PacketEditorForm(PacketCallback callback) {
-            setTitle("Edit Packet");
-            setLayout(new MigLayout("fill, wrap 2", "[][grow, fill]", "[][][grow, fill][]"));
+            setTitle("Add Packet");
+            setLayout(new MigLayout(
+                    "fill, wrap 2",
+                    "[][grow, fill]",
+                    "[][][grow, fill][]"
+            ));
 
             add(new JLabel("Label:"));
             labelField = new JTextField();
@@ -325,11 +358,12 @@ public class PacketChainerForm extends JFrame {
 
             add(new JLabel("Delay (ms):"));
             delaySpinner = new JSpinner(new SpinnerNumberModel(0, 0, Integer.MAX_VALUE, 100));
-            add(delaySpinner);
+            add(delaySpinner, "growx, h 25!");
 
             add(new JLabel("Data:"));
             dataEditor = new CodeArea();
             dataEditor.setContentData(new ByteArrayEditableData());
+            dataEditor.setMaxBytesPerRow(16);
             add(new JScrollPane(dataEditor), "span 2, grow");
 
             saveButton = new JButton("Save");
@@ -352,8 +386,10 @@ public class PacketChainerForm extends JFrame {
             });
             add(saveButton, "span 2, align center");
 
-            setSize(400, 300);
+            setSize(650, 400);
             setLocationRelativeTo(null);
+
+            pack();
         }
     }
 
