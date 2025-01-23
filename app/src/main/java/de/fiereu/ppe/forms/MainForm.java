@@ -5,18 +5,23 @@ import de.fiereu.ppe.PacketHistory;
 import de.fiereu.ppe.proxy.ServerType;
 import de.fiereu.ppe.util.Finder;
 
+import de.fiereu.ppe.util.Platform;
 import org.apache.commons.configuration2.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 
-import java.awt.*;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.BorderLayout;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 public class MainForm extends JFrame {
 
@@ -110,7 +115,14 @@ public class MainForm extends JFrame {
             if (agentPath == null)
                 return;
 
-            new ProcessBuilder("java", "-javaagent:\"" + agentPath + "\"", "-jar", pokeMMOPath)
+            List<String> command = new ArrayList<>();
+            if (Platform.get() == Platform.WINDOWS) {
+                command.add("cmd");
+                command.add("/c");
+                command.add("start");
+            }
+            command.addAll(List.of("java", "-javaagent:\"" + agentPath + "\"", "-jar", pokeMMOPath));
+            new ProcessBuilder(command)
                     .directory(new File(pokeMMOPath).getParentFile())
                     .start();
         } catch (IOException ex) {
