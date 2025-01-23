@@ -177,7 +177,7 @@ public class ProxyClient implements Runnable {
   }
 
   public void sendPacket(int packetID, Direction packetDirection, byte[] packetData) {
-    Packet packet = new Packet(Direction.SERVER_TO_CLIENT, (byte) packetID, packetData, false);
+    Packet packet = new Packet(packetDirection, (byte) packetID, packetData, false);
     switch (packetDirection) {
       case SERVER_TO_CLIENT -> {
         clientInboundPackets.add(packet);
@@ -186,6 +186,10 @@ public class ProxyClient implements Runnable {
         clientOutboundPackets.add(packet);
       }
     }
+  }
+
+  public boolean isClosed() {
+    return clientSocket.isClosed() || targetSocket.isClosed();
   }
 
   public enum ProxyHandler {

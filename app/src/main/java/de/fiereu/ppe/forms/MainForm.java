@@ -21,7 +21,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 public class MainForm extends JFrame {
 
@@ -94,8 +93,17 @@ public class MainForm extends JFrame {
     private void createToolsMenu() {
         JMenu toolsMenu = new JMenu("Tools");
 
-        JMenuItem repeatItem = new JMenuItem("Repeat");
-        repeatItem.addActionListener(this::openRepeaterForm);
+        JMenuItem packetSenderItem = new JMenuItem("Packet Sender");
+        packetSenderItem.addActionListener(e -> new PacketEditorForm(serverController).setVisible(true));
+        toolsMenu.add(packetSenderItem);
+
+        JMenuItem repeatItem = new JMenuItem("Packet Editor");
+        repeatItem.addActionListener(e -> {
+            ServerTab selectedTab = (ServerTab) serverTabs.getSelectedComponent();
+            if (selectedTab != null) {
+                new PacketEditorForm(serverController).setVisible(true);
+            }
+        });
         toolsMenu.add(repeatItem);
 
         JMenuItem chainItem = new JMenuItem("Packet Chainer");
@@ -130,13 +138,6 @@ public class MainForm extends JFrame {
             config.clearProperty("pokeMMO.path");
             config.clearProperty("pokeMMO.agent");
             showErrorDialog("Failed to start PokeMMO");
-        }
-    }
-
-    private void openRepeaterForm(ActionEvent e) {
-        ServerTab selectedTab = (ServerTab) serverTabs.getSelectedComponent();
-        if (selectedTab != null) {
-            new RepeaterForm(selectedTab.serverType, serverController).setVisible(true);
         }
     }
 

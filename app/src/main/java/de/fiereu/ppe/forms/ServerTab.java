@@ -68,8 +68,8 @@ public class ServerTab extends JPanel {
         JMenu menuItemSendTo = new JMenu("Send to");
         tablePopupMenu.add(menuItemSendTo);
 
-        JMenuItem menuItemRepeater = new JMenuItem("Repeater");
-        menuItemRepeater.addActionListener(this::sendToRepeaterBtn);
+        JMenuItem menuItemRepeater = new JMenuItem("Packet Editor");
+        menuItemRepeater.addActionListener(this::sendToEditorBtn);
         menuItemSendTo.add(menuItemRepeater);
 
         JMenuItem menuItemSendToChainer = new JMenuItem("Packet Chainer");
@@ -119,10 +119,14 @@ public class ServerTab extends JPanel {
         }
     }
 
-    private void sendToRepeaterBtn(ActionEvent e) {
-        ((PacketTableModel) packetTable.getModel())
-                .getSelectedRows()
-                .forEach(packet -> new RepeaterForm(serverType, packet, serverController).setVisible(true));
+    private void sendToEditorBtn(ActionEvent e) {
+        List<PacketHistory.PacketEntry> selectedPackets = ((PacketTableModel) packetTable.getModel()).getSelectedRows();
+        if (selectedPackets.isEmpty()) {
+            return;
+        }
+        for (PacketHistory.PacketEntry packet : selectedPackets) {
+            new PacketEditorForm(serverController, packet.direction(), packet.id(), packet.data()).setVisible(true);
+        }
     }
 
     private void sendToChainerBtn(ActionEvent e) {

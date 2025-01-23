@@ -72,7 +72,11 @@ public class ProxySocket {
     }
   }
 
-  public interface IConsumer<T> {
+    public boolean isClosed() {
+      return !socket.isOpen();
+    }
+
+    public interface IConsumer<T> {
 
     void accept(T t);
   }
