@@ -19,7 +19,7 @@ public class PacketInstance {
     }
 
     public void send() {
-        if (client != null && client.isClosed()) {
+        if (client != null && !client.isClosed()) {
             client.sendPacket(packetId, direction, data);
         }
     }
