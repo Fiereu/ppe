@@ -266,7 +266,7 @@ public class PacketChainerForm extends JFrame {
                     packet.data.saveToStream(outputStream);
                     data = outputStream.toByteArray();
                 }
-                tableModel.addRow(new Object[]{packet.label, packet.delay, data});
+                tableModel.addRow(new Object[]{packet.label, packet.id, packet.delay, data});
             }
             JOptionPane.showMessageDialog(this, "Packets loaded from packets.json.", "Success",
                     JOptionPane.INFORMATION_MESSAGE);
