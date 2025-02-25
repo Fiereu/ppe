@@ -1,4 +1,7 @@
 # PokeMMO Packet Editor
+
+[![](https://dcbadge.limes.pink/api/server/SQwGXyY2gz)](https://discord.gg/SQwGXyY2gz)
+
 ## How to Use
 1. Download the latest release from the releases page. 
 2. Edit your Hosts file to redirect the PokeMMO server to your local machine.
