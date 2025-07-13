@@ -129,7 +129,7 @@ public class MainForm extends JFrame {
                 command.add("/c");
                 command.add("start");
             }
-            command.addAll(List.of("java", "-javaagent:\"" + agentPath + "\"", "-jar", pokeMMOPath));
+            command.addAll(List.of("java", "-javaagent:\"" + agentPath + "\"", "-cp", pokeMMOPath, "com.pokeemu.client.Client"));
             new ProcessBuilder(command)
                     .directory(new File(pokeMMOPath).getParentFile())
                     .start();
