@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -23,6 +24,7 @@ import com.github.maltalex.ineter.base.IPAddress;
 
 import de.fiereu.ppe.ErrorHandler;
 import de.fiereu.ppe.PacketHistory;
+import de.fiereu.ppe.pokemmo.Region;
 import de.fiereu.ppe.proxy.ProxyClient;
 import de.fiereu.ppe.proxy.ProxyServer;
 import de.fiereu.ppe.proxy.ServerType;
@@ -34,7 +36,8 @@ public class ServerControlPane extends JPanel implements Closeable {
   private final Set<ProxyServer> servers = new HashSet<>();
   private JTextField proxyIPTF;
   private JTextField proxyIP6TF;
-  private JTextField lsIPTF;
+  private JComboBox<Region> regionCombo;
+  private JTextField customHostnameTF;
   private JTextField lsPortTF;
   private JTextField gsPortTF;
   private JTextField csPortTF;
@@ -119,11 +122,30 @@ public class ServerControlPane extends JPanel implements Closeable {
     };
   }
 
+  public Region getRegion() {
+    return (Region) regionCombo.getSelectedItem();
+  }
+
+  public String getCustomHostname() {
+    return customHostnameTF.getText().trim();
+  }
+
   private void startServerBtn(ActionEvent e) {
     try {
       var proxyIP = getProxyIP();
       var proxyIP6 = getProxyIP6();
-      var lsIP = IPAddress.of(InetAddress.getByName(lsIPTF.getText()));
+      Region region = getRegion();
+      String targetHost;
+      if (region == Region.CUSTOM) {
+        targetHost = getCustomHostname();
+        if (targetHost.isBlank()) {
+          ErrorHandler.handle(this, "Custom hostname is empty.", null);
+          return;
+        }
+      } else {
+        targetHost = region.realIp;
+      }
+      var lsIP = IPAddress.of(InetAddress.getByName(targetHost));
       var lsPort = getProxyPort(ServerType.LOGIN);
       startServer(
           ServerType.LOGIN,
@@ -162,8 +184,10 @@ public class ServerControlPane extends JPanel implements Closeable {
     proxyIPTF = new JTextField();
     JLabel label3 = new JLabel();
     proxyIP6TF = new JTextField();
-    JLabel label2 = new JLabel();
-    lsIPTF = new JTextField();
+    JLabel regionLbl = new JLabel();
+    regionCombo = new JComboBox<>(Region.values());
+    JLabel customHostnameLbl = new JLabel();
+    customHostnameTF = new JTextField();
     JLabel lsPortLbl = new JLabel();
     lsPortTF = new JTextField();
     JLabel gsPortLbl = new JLabel();
@@ -187,6 +211,8 @@ public class ServerControlPane extends JPanel implements Closeable {
             "[]" +
             "[]" +
             "[]" +
+            "[]" +
+            "[]" +
             "[grow]"));
 
     label1.setText("Proxy IP:");
@@ -199,45 +225,54 @@ public class ServerControlPane extends JPanel implements Closeable {
     add(label3, "cell 0 1");
 
     proxyIP6TF.setText("::1");
-    add(proxyIP6TF, "width 200");
+    add(proxyIP6TF, "cell 1 1,width 200");
 
-    label2.setText("Login server IP:");
-    add(label2, "cell 0 2");
+    regionLbl.setText("Region:");
+    add(regionLbl, "cell 0 2");
 
-    lsIPTF.setText("loginserver.pokemmo.eu");
-    add(lsIPTF, "cell 1 2,width 200");
+    regionCombo.setSelectedItem(Region.EU);
+    regionCombo.addActionListener(e -> {
+      boolean isCustom = regionCombo.getSelectedItem() == Region.CUSTOM;
+      customHostnameTF.setEnabled(isCustom);
+    });
+    add(regionCombo, "cell 1 2,width 200");
+
+    customHostnameLbl.setText("Custom hostname:");
+    add(customHostnameLbl, "cell 0 3");
+
+    customHostnameTF.setEnabled(false);
+    add(customHostnameTF, "cell 1 3,width 200");
 
     lsPortLbl.setText("Login server Port:");
-    add(lsPortLbl, "cell 0 3");
+    add(lsPortLbl, "cell 0 4");
 
     lsPortTF.setText("2106");
-    add(lsPortTF, "cell 1 3");
+    add(lsPortTF, "cell 1 4");
 
     gsPortLbl.setText("Game server Port:");
-    add(gsPortLbl, "cell 0 4");
+    add(gsPortLbl, "cell 0 5");
 
     gsPortTF.setText("7777");
-    add(gsPortTF, "cell 1 4");
+    add(gsPortTF, "cell 1 5");
 
     csPortLbl.setText("Chat server Port:");
-    add(csPortLbl, "cell 0 5");
+    add(csPortLbl, "cell 0 6");
 
     csPortTF.setText("7778");
-    add(csPortTF, "cell 1 5");
+    add(csPortTF, "cell 1 6");
 
     startServerBtn.setText("Start Server");
     startServerBtn.addActionListener(this::startServerBtn);
-    add(startServerBtn, "cell 0 6 2 1,growx");
+    add(startServerBtn, "cell 0 7 2 1,growx");
 
     stopServerBtn.setText("Stop Server");
     stopServerBtn.setEnabled(false);
     stopServerBtn.addActionListener(this::stopServerBtn);
-    add(stopServerBtn, "cell 0 7 2 1,growx");
+    add(stopServerBtn, "cell 0 8 2 1,growx");
 
     serverLog.setWrapStyleWord(true);
     serverLog.setLineWrap(true);
     scrollPane1.setViewportView(serverLog);
-    add(scrollPane1, "cell 0 8 2 1,grow");
-
+    add(scrollPane1, "cell 0 9 2 1,grow");
   }
 }
