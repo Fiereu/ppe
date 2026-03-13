@@ -116,22 +116,28 @@ public class MainForm extends JFrame {
     private void runPokeMMO(ActionEvent e) {
         try {
             String pokeMMOPath = getFilePath("pokeMMO.path", Finder::findPokeMMO, "PokeMMO not found");
-            if (pokeMMOPath == null)
-                return;
+            if (pokeMMOPath == null) return;
 
             String agentPath = getFilePath("pokeMMO.agent", Finder::findAgent, "Agent not found");
-            if (agentPath == null)
-                return;
+            if (agentPath == null) return;
 
             List<String> command = new ArrayList<>();
-            if (Platform.get() == Platform.WINDOWS) {
-                command.add("cmd");
-                command.add("/c");
-                command.add("start");
+            Platform platform = Platform.get();
+
+            switch (platform) {
+                case WINDOWS -> {
+                    command.addAll(List.of("cmd", "/c", "start", "/b"));
+                    command.addAll(buildJavaCommand(pokeMMOPath, agentPath, platform));
+                }
+                case MAC, LINUX -> command.addAll(buildJavaCommand(pokeMMOPath, agentPath, platform));
+                default -> {
+                    showErrorDialog("Unsupported platform");
+                    return;
+                }
             }
-            command.addAll(List.of("java", "-javaagent:\"" + agentPath + "\"", "-cp", pokeMMOPath, "com.pokeemu.client.Client"));
+
             new ProcessBuilder(command)
-                    .directory(new File(pokeMMOPath).getParentFile())
+                    .directory(resolveWorkingDir(pokeMMOPath, platform))
                     .start();
         } catch (IOException ex) {
             log.error("Failed to start PokeMMO", ex);
@@ -139,6 +145,37 @@ public class MainForm extends JFrame {
             config.clearProperty("pokeMMO.agent");
             showErrorDialog("Failed to start PokeMMO");
         }
+    }
+
+    private List<String> buildJavaCommand(String pokeMMOPath, String agentPath, Platform platform) {
+        String classPath = resolveClassPath(pokeMMOPath, platform);
+        List<String> cmd = new ArrayList<>();
+        cmd.add("java");
+        cmd.add("-javaagent:" + agentPath);
+        if (platform == Platform.MAC) {
+            cmd.add("-XstartOnFirstThread");
+        }
+        cmd.addAll(List.of("-Xms128M", "-Xmx256M", "-Dfile.encoding=UTF-8"));
+        cmd.addAll(List.of("-cp", classPath, "com.pokeemu.client.Client"));
+        return cmd;
+    }
+
+    private String resolveClassPath(String pokeMMOPath, Platform platform) {
+        if (pokeMMOPath.endsWith(".jar")) {
+            return pokeMMOPath;
+        }
+        File f = new File(pokeMMOPath);
+        if (f.isDirectory()) {
+            File jar = new File(pokeMMOPath, "PokeMMO.exe");
+            if (jar.exists()) return jar.getAbsolutePath();
+        }
+        return pokeMMOPath;
+    }
+
+    private File resolveWorkingDir(String pokeMMOPath, Platform platform) {
+        File f = new File(pokeMMOPath);
+        if (f.isDirectory()) return f;
+        return f.getParentFile();
     }
 
     private String getFilePath(String configKey, FileFinder finder, String errorMessage) {
